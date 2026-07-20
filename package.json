@@ -1,0 +1,16 @@
+{
+  "name": "trustgrid-gun-servers",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start:chat": "node chat-server.js",
+    "start:signal": "node signaling-server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^4.19.2",
+    "gun": "^0.2020.1240",
+    "lru-cache": "^10.2.0"
+  }
+}
