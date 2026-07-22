@@ -1,9 +1,16 @@
-import 'dotenv/config';
+// =====================================================================
+// chat-server.js — standalone Gun.js CHAT + GROUP server
+//
+// Deploy one of these per relay node. Every node's GUN_CHAT_PEERS env
+// must list the OTHER relay nodes (not itself) so the mesh is fully
+// connected — see .env.example.
+// =====================================================================
 
 import express from 'express';
 import http from 'http';
 import Gun from 'gun';
 import { LRUCache } from 'lru-cache';
+import Redis from 'ioredis';
 
 // ---------------------------------------------------------------------
 // Env / config
@@ -12,6 +19,41 @@ const PORT = parseInt(process.env.CHAT_PORT || '8765');
 const NODE_ID = process.env.NODE_ID || 'chat-1';
 const GUN_TIMEOUT = parseInt(process.env.GUN_TIMEOUT || '9000');
 const DEFAULT_GROUP_ID = process.env.DEFAULT_GROUP_ID || 'first_responder_group';
+
+// Shared across all 3 chat relay nodes — this is what makes notification
+// dedup actually work. The in-memory processedEvents cache below only
+// dedups within ONE process; since the same message arrives on all 3
+// relays via Gun sync, only a lock shared across all 3 stops all 3
+// from independently sending the same push.
+const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
+const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379');
+const REDIS_PASSWORD = process.env.REDIS_PASSWORD || undefined;
+const NOTIF_CLAIM_TTL_SEC = parseInt(process.env.NOTIF_CLAIM_TTL_SEC || '120');
+
+const redis = new Redis({
+  host: REDIS_HOST,
+  port: REDIS_PORT,
+  password: REDIS_PASSWORD,
+  retryStrategy: (times) => Math.min(times * 50, 2000),
+  maxRetriesPerRequest: 3,
+});
+redis.on('error', (err) => console.error(`[Redis] ${err.message}`));
+
+// Atomically claims the right to notify for this messageId. Returns true
+// only for whichever of the 3 chat-server processes calls this first;
+// the other two get false and skip sending. NX = only set if absent,
+// EX = auto-expire so a crash mid-claim doesn't wedge it forever.
+async function claimNotification(messageId) {
+  try {
+    const result = await redis.set(`notif-claim:${messageId}`, NODE_ID, 'EX', NOTIF_CLAIM_TTL_SEC, 'NX');
+    return result === 'OK';
+  } catch (error) {
+    // Redis unreachable — fail open (send anyway) rather than silently
+    // drop notifications; a rare duplicate push beats a rare missed one.
+    console.error('[Notify] Redis claim failed, sending without dedup:', error.message);
+    return true;
+  }
+}
 
 // Comma-separated list of the OTHER chat relay peers (not this one).
 // e.g. on chat-1: "wss://chat-2.trustgrid.com/gun,wss://chat-3.trustgrid.com/gun"
@@ -112,6 +154,15 @@ function initializeChatGun() {
     radisk: true,
     until: GUN_TIMEOUT,
     chunk: 1024 * 8,
+    // AXE turns a relay into a routing peer rather than a storing one —
+    // it forwards messages between peers instead of reliably persisting
+    // and serving them back. That produced edges that synced while the
+    // nodes they pointed at were never retrievable. We want plain
+    // store-and-serve relay behavior here.
+    axe: false,
+    // LAN multicast discovery is meaningless for geographically separate
+    // VMs and only adds noise; peers are configured explicitly.
+    multicast: false,
   });
 
   appState.gun.on('hi', (peer) => console.log(`[Gun] Peer connected: ${peer?.url || peer?.id || 'unknown'}`));
@@ -212,21 +263,25 @@ function handleChatMessage(chatId, message, messageId) {
   const recipient = message.sender === user1 ? user2 : user1;
   if (!recipient) return;
 
-  // debouncedCombinedNotification(recipient, {
-  //   type: 'chat',
-  //   title: `Message from ${message.sender}`,
-  //   body: message.type === 'file' ? 'Sent a file' : message.content,
-  //   data: {
-  //     messageType: 'chat',
-  //     senderId: message.sender,
-  //     chatId,
-  //     messageId,
-  //     contentType: message.type || 'text',
-  //     timestamp: message.timestamp || Date.now(),
-  //   },
-  // });
+  claimNotification(messageId).then((claimed) => {
+    if (!claimed) return; // another chat-server node already sent this one
 
-  appState.gun.get('chats').get(chatId).get(messageId).get('notified').put(true);
+    // debouncedCombinedNotification(recipient, {
+    //   type: 'chat',
+    //   title: `Message from ${message.sender}`,
+    //   body: message.type === 'file' ? 'Sent a file' : message.content,
+    //   data: {
+    //     messageType: 'chat',
+    //     senderId: message.sender,
+    //     chatId,
+    //     messageId,
+    //     contentType: message.type || 'text',
+    //     timestamp: message.timestamp || Date.now(),
+    //   },
+    // });
+
+    appState.gun.get('chats').get(chatId).get(messageId).get('notified').put(true);
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -238,9 +293,12 @@ function handleGroupMessage(groupId, message, messageId) {
 
   if (!message || !message.sender || message.notified) return;
 
-  appState.gun.get('groupChats').get(groupId).get(messageId).get('notified').put(true);
+  claimNotification(messageId).then((claimed) => {
+    if (!claimed) return; // another chat-server node already ran this fan-out
 
-  appState.gun.get('groups').get(groupId).once((groupData) => {
+    appState.gun.get('groupChats').get(groupId).get(messageId).get('notified').put(true);
+
+    appState.gun.get('groups').get(groupId).once((groupData) => {
     if (!groupData) {
       console.warn(`[Gun] No groupData found for groupId: ${groupId}`);
       return;
@@ -300,6 +358,7 @@ function handleGroupMessage(groupId, message, messageId) {
         });
       });
     });
+  });
   });
 }
 
