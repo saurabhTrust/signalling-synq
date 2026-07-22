@@ -29,11 +29,11 @@ const GUN_SIGNAL_PEERS = (process.env.GUN_SIGNAL_PEERS || '')
   .map((p) => p.trim())
   .filter(Boolean);
 
-const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL;
-if (!NOTIFICATION_SERVICE_URL) {
-  console.error('FATAL: NOTIFICATION_SERVICE_URL is not set. Refusing to start.');
-  process.exit(1);
-}
+// const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL;
+// if (!NOTIFICATION_SERVICE_URL) {
+//   console.error('FATAL: NOTIFICATION_SERVICE_URL is not set. Refusing to start.');
+//   process.exit(1);
+// }
 
 // ---------------------------------------------------------------------
 // App / HTTP server
