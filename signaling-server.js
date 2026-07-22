@@ -9,7 +9,7 @@
 // RAM-only by design (radisk: false). Meant to be restarted on a
 // staggered schedule to reclaim memory — see restart-signal-relay.sh.
 // =====================================================================
-
+import dotenv from 'dotenv';
 import express from 'express';
 import http from 'http';
 import Gun from 'gun';

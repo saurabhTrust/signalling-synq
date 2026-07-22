@@ -5,7 +5,7 @@
 // must list the OTHER relay nodes (not itself) so the mesh is fully
 // connected — see .env.example.
 // =====================================================================
-
+import dotenv from 'dotenv';
 import express from 'express';
 import http from 'http';
 import Gun from 'gun';
