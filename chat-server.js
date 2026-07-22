@@ -212,19 +212,19 @@ function handleChatMessage(chatId, message, messageId) {
   const recipient = message.sender === user1 ? user2 : user1;
   if (!recipient) return;
 
-  debouncedCombinedNotification(recipient, {
-    type: 'chat',
-    title: `Message from ${message.sender}`,
-    body: message.type === 'file' ? 'Sent a file' : message.content,
-    data: {
-      messageType: 'chat',
-      senderId: message.sender,
-      chatId,
-      messageId,
-      contentType: message.type || 'text',
-      timestamp: message.timestamp || Date.now(),
-    },
-  });
+  // debouncedCombinedNotification(recipient, {
+  //   type: 'chat',
+  //   title: `Message from ${message.sender}`,
+  //   body: message.type === 'file' ? 'Sent a file' : message.content,
+  //   data: {
+  //     messageType: 'chat',
+  //     senderId: message.sender,
+  //     chatId,
+  //     messageId,
+  //     contentType: message.type || 'text',
+  //     timestamp: message.timestamp || Date.now(),
+  //   },
+  // });
 
   appState.gun.get('chats').get(chatId).get(messageId).get('notified').put(true);
 }
