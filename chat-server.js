@@ -6,6 +6,7 @@
 // connected — see .env.example.
 // =====================================================================
 import dotenv from 'dotenv';
+dotenv.config(); // load .env into process.env before anything else
 import express from 'express';
 import http from 'http';
 import Gun from 'gun';
@@ -63,7 +64,7 @@ const GUN_CHAT_PEERS = (process.env.GUN_CHAT_PEERS || '')
   .filter(Boolean);
 
 // The standalone notification service (index.js / notificationService.js)
-// const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL;
+const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL;
 // if (!NOTIFICATION_SERVICE_URL) {
 //   console.error('FATAL: NOTIFICATION_SERVICE_URL is not set. Refusing to start.');
 //   process.exit(1);
