@@ -25,19 +25,19 @@ const DEFAULT_GROUP_ID = process.env.DEFAULT_GROUP_ID || 'first_responder_group'
 // dedups within ONE process; since the same message arrives on all 3
 // relays via Gun sync, only a lock shared across all 3 stops all 3
 // from independently sending the same push.
-const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
-const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379');
-const REDIS_PASSWORD = process.env.REDIS_PASSWORD || undefined;
-const NOTIF_CLAIM_TTL_SEC = parseInt(process.env.NOTIF_CLAIM_TTL_SEC || '120');
+// const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
+// const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379');
+// const REDIS_PASSWORD = process.env.REDIS_PASSWORD || undefined;
+// const NOTIF_CLAIM_TTL_SEC = parseInt(process.env.NOTIF_CLAIM_TTL_SEC || '120');
 
-const redis = new Redis({
-  host: REDIS_HOST,
-  port: REDIS_PORT,
-  password: REDIS_PASSWORD,
-  retryStrategy: (times) => Math.min(times * 50, 2000),
-  maxRetriesPerRequest: 3,
-});
-redis.on('error', (err) => console.error(`[Redis] ${err.message}`));
+// const redis = new Redis({
+//   host: REDIS_HOST,
+//   port: REDIS_PORT,
+//   password: REDIS_PASSWORD,
+//   retryStrategy: (times) => Math.min(times * 50, 2000),
+//   maxRetriesPerRequest: 3,
+// });
+// redis.on('error', (err) => console.error(`[Redis] ${err.message}`));
 
 // Atomically claims the right to notify for this messageId. Returns true
 // only for whichever of the 3 chat-server processes calls this first;
@@ -263,25 +263,25 @@ function handleChatMessage(chatId, message, messageId) {
   const recipient = message.sender === user1 ? user2 : user1;
   if (!recipient) return;
 
-  claimNotification(messageId).then((claimed) => {
-    if (!claimed) return; // another chat-server node already sent this one
+  // claimNotification(messageId).then((claimed) => {
+  //   if (!claimed) return; // another chat-server node already sent this one
 
-    // debouncedCombinedNotification(recipient, {
-    //   type: 'chat',
-    //   title: `Message from ${message.sender}`,
-    //   body: message.type === 'file' ? 'Sent a file' : message.content,
-    //   data: {
-    //     messageType: 'chat',
-    //     senderId: message.sender,
-    //     chatId,
-    //     messageId,
-    //     contentType: message.type || 'text',
-    //     timestamp: message.timestamp || Date.now(),
-    //   },
-    // });
+  //   // debouncedCombinedNotification(recipient, {
+  //   //   type: 'chat',
+  //   //   title: `Message from ${message.sender}`,
+  //   //   body: message.type === 'file' ? 'Sent a file' : message.content,
+  //   //   data: {
+  //   //     messageType: 'chat',
+  //   //     senderId: message.sender,
+  //   //     chatId,
+  //   //     messageId,
+  //   //     contentType: message.type || 'text',
+  //   //     timestamp: message.timestamp || Date.now(),
+  //   //   },
+  //   // });
 
-    appState.gun.get('chats').get(chatId).get(messageId).get('notified').put(true);
-  });
+  //   appState.gun.get('chats').get(chatId).get(messageId).get('notified').put(true);
+  // });
 }
 
 // ---------------------------------------------------------------------
