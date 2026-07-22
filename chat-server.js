@@ -1,11 +1,5 @@
-// =====================================================================
-// chat-server.js — standalone Gun.js CHAT + GROUP server
-//
-// Deploy one of these per relay node. Every node's GUN_CHAT_PEERS env
-// must list the OTHER relay nodes (not itself) so the mesh is fully
-// connected — see .env.example.
-// =====================================================================
 import 'dotenv/config';
+
 import express from 'express';
 import http from 'http';
 import Gun from 'gun';
@@ -38,6 +32,12 @@ if (!NOTIFICATION_SERVICE_URL) {
 // ---------------------------------------------------------------------
 const app = express();
 const server = http.createServer(app);
+
+// CRITICAL: must be registered before any other routes/catch-alls.
+// Without this, Express's own 404 handler answers GET/POST /gun before
+// Gun's request handling ever runs — which is exactly what breaks both
+// client→relay AND relay→relay (peer) traffic.
+app.use(Gun.serve);
 
 app.get('/health', (req, res) => {
   res.status(200).json({
