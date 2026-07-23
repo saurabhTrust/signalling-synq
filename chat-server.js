@@ -26,19 +26,19 @@ const DEFAULT_GROUP_ID = process.env.DEFAULT_GROUP_ID || 'first_responder_group'
 // dedups within ONE process; since the same message arrives on all 3
 // relays via Gun sync, only a lock shared across all 3 stops all 3
 // from independently sending the same push.
-// const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
-// const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379');
-// const REDIS_PASSWORD = process.env.REDIS_PASSWORD || undefined;
-// const NOTIF_CLAIM_TTL_SEC = parseInt(process.env.NOTIF_CLAIM_TTL_SEC || '120');
+const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
+const REDIS_PORT = parseInt(process.env.REDIS_PORT || '6379');
+const REDIS_PASSWORD = process.env.REDIS_PASSWORD || undefined;
+const NOTIF_CLAIM_TTL_SEC = parseInt(process.env.NOTIF_CLAIM_TTL_SEC || '120');
 
-// const redis = new Redis({
-//   host: REDIS_HOST,
-//   port: REDIS_PORT,
-//   password: REDIS_PASSWORD,
-//   retryStrategy: (times) => Math.min(times * 50, 2000),
-//   maxRetriesPerRequest: 3,
-// });
-// redis.on('error', (err) => console.error(`[Redis] ${err.message}`));
+const redis = new Redis({
+  host: REDIS_HOST,
+  port: REDIS_PORT,
+  password: REDIS_PASSWORD,
+  retryStrategy: (times) => Math.min(times * 50, 2000),
+  maxRetriesPerRequest: 3,
+});
+redis.on('error', (err) => console.error(`[Redis] ${err.message}`));
 
 // Atomically claims the right to notify for this messageId. Returns true
 // only for whichever of the 3 chat-server processes calls this first;
@@ -65,10 +65,10 @@ const GUN_CHAT_PEERS = (process.env.GUN_CHAT_PEERS || '')
 
 // The standalone notification service (index.js / notificationService.js)
 const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL;
-// if (!NOTIFICATION_SERVICE_URL) {
-//   console.error('FATAL: NOTIFICATION_SERVICE_URL is not set. Refusing to start.');
-//   process.exit(1);
-// }
+if (!NOTIFICATION_SERVICE_URL) {
+  console.error('FATAL: NOTIFICATION_SERVICE_URL is not set. Refusing to start.');
+  process.exit(1);
+}
 
 // ---------------------------------------------------------------------
 // App / HTTP server — Gun attaches to this via { web }
