@@ -10,6 +10,7 @@
 // staggered schedule to reclaim memory — see restart-signal-relay.sh.
 // =====================================================================
 import dotenv from 'dotenv';
+dotenv.config(); // 
 import express from 'express';
 import http from 'http';
 import Gun from 'gun';
